@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f8f4" />
+  <meta name="description" content="Forest Studio 的乾淨繁簡轉換工具。文字只在你的瀏覽器內處理。" />
+  <title>Forest Converter</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon-192.png" />
+  <style>
+    :root {
+      --bg: #f6f8f4;
+      --panel: rgba(255,255,255,.86);
+      --panel-strong: #ffffff;
+      --text: #233128;
+      --muted: #78847b;
+      --line: #dfe6df;
+      --green: #4d6958;
+      --green-dark: #334b3d;
+      --green-soft: #e9f0ea;
+      --shadow: 0 18px 50px rgba(46, 67, 52, .08);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Noto Sans CJK TC", "Microsoft JhengHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(210, 224, 213, .55), transparent 36%),
+        linear-gradient(180deg, #fafbf9 0%, var(--bg) 48%, #f1f5f0 100%);
+    }
+
+    button, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 34px 0 42px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      background: var(--green-dark);
+      box-shadow: 0 12px 26px rgba(51,75,61,.18);
+      color: white;
+      font-weight: 800;
+      letter-spacing: -.06em;
+      font-size: 16px;
+    }
+
+    .brand-copy h1 {
+      margin: 0;
+      font-size: clamp(20px, 2.5vw, 27px);
+      letter-spacing: -.035em;
+      font-weight: 760;
+    }
+
+    .brand-copy p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .privacy-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      color: #607068;
+      border-radius: 999px;
+      padding: 9px 12px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .privacy-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #6f9178;
+      box-shadow: 0 0 0 4px rgba(111,145,120,.10);
+    }
+
+    .shell {
+      background: var(--panel);
+      border: 1px solid rgba(211, 221, 213, .9);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+
+    .direction-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(250, 252, 249, .75);
+    }
+
+    .segmented {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 4px;
+      background: #edf2ed;
+      border-radius: 14px;
+    }
+
+    .segmented button {
+      border: 0;
+      background: transparent;
+      color: #6c776f;
+      padding: 10px 16px;
+      border-radius: 11px;
+      cursor: pointer;
+      font-weight: 680;
+      min-width: 118px;
+      transition: .16s ease;
+    }
+
+    .segmented button.active {
+      color: var(--green-dark);
+      background: #fff;
+      box-shadow: 0 4px 16px rgba(51,75,61,.08);
+    }
+
+    .workgrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 510px;
+    }
+
+    .pane {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: rgba(255,255,255,.62);
+    }
+
+    .pane + .pane { border-left: 1px solid var(--line); }
+
+    .pane-head {
+      min-height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 15px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .pane-title {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      font-weight: 740;
+      letter-spacing: -.01em;
+    }
+
+    .pane-title span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 550;
+    }
+
+    .mini-actions { display: flex; gap: 8px; }
+
+    .ghost-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #526158;
+      border-radius: 10px;
+      padding: 7px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: .15s ease;
+    }
+
+    .ghost-btn:hover { border-color: #c6d2c8; background: #fbfcfb; }
+    .ghost-btn:active { transform: translateY(1px); }
+
+    textarea {
+      width: 100%;
+      flex: 1;
+      min-height: 365px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: #27332b;
+      padding: 22px 20px 18px;
+      font-size: clamp(16px, 1.55vw, 18px);
+      line-height: 1.82;
+      letter-spacing: .01em;
+    }
+
+    textarea::placeholder { color: #a3ada6; }
+    #output { background: rgba(248,250,248,.58); }
+
+    .pane-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 55px;
+      padding: 11px 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      background: rgba(250,252,250,.55);
+    }
+
+    .status { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .main-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 17px 18px;
+      border-top: 1px solid var(--line);
+      background: rgba(250,252,249,.82);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .action-group { display: flex; align-items: center; gap: 10px; }
+
+    .secondary-btn, .primary-btn {
+      border-radius: 13px;
+      padding: 11px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: .15s ease;
+    }
+
+    .secondary-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #536158;
+    }
+
+    .primary-btn {
+      border: 1px solid var(--green-dark);
+      background: var(--green-dark);
+      color: #fff;
+      min-width: 132px;
+      box-shadow: 0 8px 18px rgba(51,75,61,.16);
+    }
+
+    .secondary-btn:hover { background: #f8faf8; }
+    .primary-btn:hover { background: #294034; }
+    .primary-btn:active, .secondary-btn:active { transform: translateY(1px); }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 26px;
+      transform: translate(-50%, 16px);
+      opacity: 0;
+      pointer-events: none;
+      background: #26342b;
+      color: #fff;
+      border-radius: 999px;
+      padding: 10px 15px;
+      font-size: 13px;
+      box-shadow: 0 12px 32px rgba(35,49,40,.2);
+      transition: .2s ease;
+      z-index: 20;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    .footer {
+      text-align: center;
+      color: #8c978f;
+      font-size: 11px;
+      margin-top: 16px;
+      letter-spacing: .02em;
+    }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 18px, 1180px); padding: 18px 0 26px; }
+      .topbar { align-items: flex-start; margin-bottom: 14px; }
+      .privacy-pill { display: none; }
+      .logo { width: 42px; height: 42px; border-radius: 13px; }
+      .brand-copy p { font-size: 12px; }
+      .shell { border-radius: 22px; }
+      .direction-wrap { padding: 12px; }
+      .segmented { width: 100%; }
+      .segmented button { min-width: 0; padding: 10px 9px; }
+      .workgrid { grid-template-columns: 1fr; min-height: auto; }
+      .pane + .pane { border-left: 0; border-top: 1px solid var(--line); }
+      textarea { min-height: 255px; padding: 18px 16px; font-size: 16px; }
+      #output { min-height: 235px; }
+      .pane-head { min-height: 52px; padding: 12px 14px; }
+      .pane-foot { min-height: 48px; padding: 9px 14px; }
+      .main-actions { position: sticky; bottom: 0; z-index: 5; padding: 12px; }
+      .hint { display: none; }
+      .action-group { width: 100%; }
+      .secondary-btn { flex: 0 0 auto; }
+      .primary-btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">简繁</div>
+        <div class="brand-copy">
+          <h1>Forest Converter</h1>
+          <p>乾淨的繁簡轉換工具 · Forest Studio</p>
+        </div>
+      </div>
+      <div class="privacy-pill" title="轉換在本機瀏覽器中完成">
+        <span class="privacy-dot"></span>
+        文字不會上傳
+      </div>
+    </header>
+
+    <section class="shell" aria-label="繁簡轉換工具">
+      <div class="direction-wrap">
+        <div class="segmented" role="tablist" aria-label="轉換方向">
+          <button id="s2tTab" class="active" type="button" role="tab" aria-selected="true">簡 → 繁</button>
+          <button id="t2sTab" type="button" role="tab" aria-selected="false">繁 → 簡</button>
+        </div>
+      </div>
+
+      <div class="workgrid">
+        <section class="pane">
+          <div class="pane-head">
+            <div class="pane-title">原文 <span id="inputLabel">簡體</span></div>
+            <div class="mini-actions">
+              <button class="ghost-btn" id="pasteBtn" type="button">貼上</button>
+              <button class="ghost-btn" id="clearBtn" type="button">清空</button>
+            </div>
+          </div>
+          <textarea id="input" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="把文字貼在這裡…"></textarea>
+          <div class="pane-foot">
+            <span id="inputCount">0 字</span>
+            <span class="status">保留段落、標點與換行</span>
+          </div>
+        </section>
+
+        <section class="pane">
+          <div class="pane-head">
+            <div class="pane-title">結果 <span id="outputLabel">繁體</span></div>
+            <div class="mini-actions">
+              <button class="ghost-btn" id="copyBtn" type="button">複製結果</button>
+            </div>
+          </div>
+          <textarea id="output" spellcheck="false" readonly placeholder="轉換結果會出現在這裡"></textarea>
+          <div class="pane-foot">
+            <span id="outputCount">0 字</span>
+            <span class="status" id="engineStatus">轉換引擎準備中…</span>
+          </div>
+        </section>
+      </div>
+
+      <div class="main-actions">
+        <div class="hint">快捷鍵：Ctrl / ⌘ + Enter 立即轉換</div>
+        <div class="action-group">
+          <button class="secondary-btn" id="swapBtn" type="button">交換內容</button>
+          <button class="primary-btn" id="convertBtn" type="button">轉換</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">V1.0 · designed by Forest Studio</div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.4.2/dist/umd/full.js"></script>
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      const input = $('input');
+      const output = $('output');
+      const s2tTab = $('s2tTab');
+      const t2sTab = $('t2sTab');
+      const inputLabel = $('inputLabel');
+      const outputLabel = $('outputLabel');
+      const engineStatus = $('engineStatus');
+      const toast = $('toast');
+      let direction = localStorage.getItem('forest-converter-direction') || 's2t';
+      let toastTimer;
+      let converters = null;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 1500);
+      }
+
+      function countChars(text) {
+        return Array.from(text).length;
+      }
+
+      function updateCounts() {
+        $('inputCount').textContent = `${countChars(input.value)} 字`;
+        $('outputCount').textContent = `${countChars(output.value)} 字`;
+      }
+
+      function setDirection(nextDirection) {
+        direction = nextDirection;
+        localStorage.setItem('forest-converter-direction', direction);
+        const isS2T = direction === 's2t';
+        s2tTab.classList.toggle('active', isS2T);
+        t2sTab.classList.toggle('active', !isS2T);
+        s2tTab.setAttribute('aria-selected', String(isS2T));
+        t2sTab.setAttribute('aria-selected', String(!isS2T));
+        inputLabel.textContent = isS2T ? '簡體' : '繁體';
+        outputLabel.textContent = isS2T ? '繁體' : '簡體';
+        input.placeholder = isS2T ? '把簡體文字貼在這裡…' : '把繁體文字貼在這裡…';
+      }
+
+      function initEngine() {
+        try {
+          if (!window.OpenCC) throw new Error('OpenCC unavailable');
+          converters = {
+            s2t: OpenCC.Converter({ from: 'cn', to: 'tw' }),
+            t2s: OpenCC.Converter({ from: 'tw', to: 'cn' })
+          };
+          engineStatus.textContent = 'OpenCC · 本機轉換';
+          return true;
+        } catch (error) {
+          converters = null;
+          engineStatus.textContent = '轉換引擎載入失敗';
+          console.error(error);
+          return false;
+        }
+      }
+
+      function convert() {
+        const text = input.value;
+        if (!text) {
+          output.value = '';
+          updateCounts();
+          showToast('先貼入文字');
+          input.focus();
+          return;
+        }
+        if (!converters && !initEngine()) {
+          showToast('目前無法載入轉換引擎');
+          return;
+        }
+        try {
+          output.value = converters[direction](text);
+          updateCounts();
+          showToast('轉換完成');
+        } catch (error) {
+          console.error(error);
+          showToast('轉換失敗，請再試一次');
+        }
+      }
+
+      async function pasteText() {
+        try {
+          const text = await navigator.clipboard.readText();
+          input.value = text;
+          updateCounts();
+          input.focus();
+          showToast(text ? '已貼上' : '剪貼簿是空的');
+        } catch {
+          input.focus();
+          showToast('瀏覽器未允許讀取剪貼簿，請手動貼上');
+        }
+      }
+
+      async function copyResult() {
+        if (!output.value) {
+          showToast('目前沒有結果');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(output.value);
+          showToast('已複製');
+        } catch {
+          output.removeAttribute('readonly');
+          output.select();
+          document.execCommand('copy');
+          output.setAttribute('readonly', '');
+          showToast('已複製');
+        }
+      }
+
+      function swapContent() {
+        const source = input.value;
+        const result = output.value;
+        input.value = result || source;
+        output.value = result ? source : '';
+        setDirection(direction === 's2t' ? 't2s' : 's2t');
+        updateCounts();
+        showToast('已交換');
+      }
+
+      s2tTab.addEventListener('click', () => setDirection('s2t'));
+      t2sTab.addEventListener('click', () => setDirection('t2s'));
+      $('convertBtn').addEventListener('click', convert);
+      $('pasteBtn').addEventListener('click', pasteText);
+      $('copyBtn').addEventListener('click', copyResult);
+      $('swapBtn').addEventListener('click', swapContent);
+      $('clearBtn').addEventListener('click', () => {
+        input.value = '';
+        output.value = '';
+        updateCounts();
+        input.focus();
+        showToast('已清空');
+      });
+      input.addEventListener('input', updateCounts);
+      document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+          event.preventDefault();
+          convert();
+        }
+      });
+
+      setDirection(direction);
+      updateCounts();
+      initEngine();
+
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
