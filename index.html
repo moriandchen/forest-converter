@@ -397,13 +397,14 @@
       <div class="main-actions">
         <div class="hint">快捷鍵：Ctrl / ⌘ + Enter 立即轉換</div>
         <div class="action-group">
+          <button class="secondary-btn" id="undoBtn" type="button" disabled>撤銷</button>
           <button class="secondary-btn" id="swapBtn" type="button">交換內容</button>
           <button class="primary-btn" id="convertBtn" type="button">轉換</button>
         </div>
       </div>
     </section>
 
-    <div class="footer">V1.0 · designed by Forest Studio</div>
+    <div class="footer">V1.1 · designed by Forest Studio</div>
   </main>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -420,9 +421,13 @@
       const outputLabel = $('outputLabel');
       const engineStatus = $('engineStatus');
       const toast = $('toast');
-      let direction = localStorage.getItem('forest-converter-direction') || 's2t';
+      let direction='s2t';try{direction=localStorage.getItem('forest-converter-direction')==='t2s'?'t2s':'s2t'}catch(_){}
       let toastTimer;
       let converters = null;
+      const undoHistory=[];
+      function remember(){undoHistory.push({input:input.value,output:output.value,direction});if(undoHistory.length>12)undoHistory.shift();$('undoBtn').disabled=false;}
+      function undo(){const old=undoHistory.pop();if(!old)return;input.value=old.input;output.value=old.output;setDirection(old.direction);updateCounts();$('undoBtn').disabled=!undoHistory.length;showToast('已撤銷，原文與結果已恢復');}
+      $('undoBtn').addEventListener('click',undo);
 
       function showToast(message) {
         toast.textContent = message;
@@ -442,7 +447,7 @@
 
       function setDirection(nextDirection) {
         direction = nextDirection;
-        localStorage.setItem('forest-converter-direction', direction);
+        try{localStorage.setItem('forest-converter-direction', direction)}catch(_){}
         const isS2T = direction === 's2t';
         s2tTab.classList.toggle('active', isS2T);
         t2sTab.classList.toggle('active', !isS2T);
@@ -473,6 +478,7 @@
       function convert() {
         const text = input.value;
         if (!text) {
+          if(output.value)remember();
           output.value = '';
           updateCounts();
           showToast('先貼入文字');
@@ -484,7 +490,9 @@
           return;
         }
         try {
-          output.value = converters[direction](text);
+          const result=converters[direction](text);
+          remember();
+          output.value = result;
           updateCounts();
           showToast('轉換完成');
         } catch (error) {
@@ -496,6 +504,7 @@
       async function pasteText() {
         try {
           const text = await navigator.clipboard.readText();
+          remember();
           input.value = text;
           updateCounts();
           input.focus();
@@ -517,13 +526,14 @@
         } catch {
           output.removeAttribute('readonly');
           output.select();
-          document.execCommand('copy');
+          const copied=document.execCommand('copy');
           output.setAttribute('readonly', '');
-          showToast('已複製');
+          showToast(copied?'已複製':'複製未成功，請手動選取複製');
         }
       }
 
       function swapContent() {
+        remember();
         const source = input.value;
         const result = output.value;
         input.value = result || source;
@@ -540,6 +550,7 @@
       $('copyBtn').addEventListener('click', copyResult);
       $('swapBtn').addEventListener('click', swapContent);
       $('clearBtn').addEventListener('click', () => {
+        remember();
         input.value = '';
         output.value = '';
         updateCounts();

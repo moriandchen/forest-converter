@@ -1,4 +1,4 @@
-const CACHE = 'forest-converter-v1';
+const CACHE = 'forest-converter-v1.1';
 const APP_ASSETS = [
   './',
   './index.html',
@@ -20,7 +20,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+    await Promise.all(keys.filter((key) => key.startsWith('forest-converter-') && key !== CACHE).map((key) => caches.delete(key)));
     await self.clients.claim();
   })());
 });
@@ -28,6 +28,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith((async () => {
+    if(event.request.mode==='navigate'){try{const r=await fetch(event.request);if(r.ok){const c=await caches.open(CACHE);await c.put('./index.html',r.clone())}return r}catch(_){return caches.match('./index.html')}}
     const cached = await caches.match(event.request);
     if (cached) return cached;
     try {
